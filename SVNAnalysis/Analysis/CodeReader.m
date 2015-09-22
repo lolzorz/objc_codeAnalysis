@@ -23,19 +23,28 @@
 + (void)findOutModifyInPath:(NSString *)file atLine:(NSInteger)line {
     NSString *fileContent = [NSString stringWithContentsOfFile:file encoding:NSUTF8StringEncoding error:nil];
     NSArray *lines = [fileContent componentsSeparatedByString:@"\n"];
-    CodeMethod *cm = [self methodInLines:lines atLine:line];
+    NSString *methodName = [self methodInLines:lines atLine:line];
     NSString *fileName = [file lastPathComponent];
     fileName = [fileName stringByDeletingPathExtension];
     CodeManager *codeManager = [CodeManager sharedInstance];
     NSMutableDictionary *allFiles = codeManager.allFiles;
-    NSMutableArray *refs = [((CodeFile *)allFiles[fileName]).refs mutableCopy];
+    NSMutableArray *refs = [[NSMutableArray alloc] init];
+    NSMutableArray *aRef = ((CodeFile *)allFiles[fileName]).refs;
+    for(NSString *name in aRef) {
+        CodeMethod *aMethod = [[CodeMethod alloc] init];
+        aMethod.methodFile = allFiles[name];
+        aMethod.methodName = methodName;
+        [refs addObject:aMethod];
+    }
     while(refs.count) {
         NSMutableArray *aArr = [refs mutableCopy];
         [refs removeAllObjects];
-        for(NSString *name in aArr) {
-            CodeFile *aCodeFile = allFiles[name];
+        for(CodeMethod *aMethod in aArr) {
+            CodeFile *aCodeFile = aMethod.methodFile;
             if(aCodeFile.filePath.length) {
                 NSString *aFileContent = [NSString stringWithContentsOfFile:aCodeFile.filePath encoding:NSUTF8StringEncoding error:nil];
+                
+                
                 
             }
         }
@@ -54,8 +63,6 @@
         return;
     }
     //    [self analysisDefine:fileContent isHeader:isHeader];
-    NSArray *lines = [fileContent componentsSeparatedByString:@"\n"];
-    NSLog(@"%@", [self methodInLines:lines atLine:1020].methodName);
 }
 
 + (void)analysisCodeWithPath:(NSString *)path {
@@ -67,7 +74,7 @@
     [self analysisCode:fileContent];
 }
 
-+ (CodeMethod *)methodInLines:(NSArray *)lines atLine:(NSInteger)line {
++ (NSString *)methodInLines:(NSArray *)lines atLine:(NSInteger)line {
     line--;
     NSInteger startLine = line;
     for(startLine = line; startLine >= 0; startLine--) {
@@ -106,9 +113,9 @@
         startLine++;
     }
     CodeMethod *cm = [[CodeMethod alloc] init];
-    cm.methodName = resultMethod;
-    cm.methodClass = [self classInLines:lines atLine:line];
-    return cm;
+//    cm.methodName = resultMethod;
+//    cm.methodClass = [self classInLines:lines atLine:line];
+    return resultMethod;
 }
 
 + (CodeClass *)classInLines:(NSArray *)lines atLine:(NSInteger)line {
