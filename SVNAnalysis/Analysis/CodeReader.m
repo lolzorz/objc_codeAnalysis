@@ -11,12 +11,35 @@
 #import "CodeClass.h"
 #import "CodeMethod.h"
 #import "CodeManager.h"
-#import <objc/runtime.h>
+#import "CodeFile.h"
 
 @implementation CodeReader
 
 + (void)testRead {
-    [self analysisDefineWithPath:@"/Users/xujiachong/Documents/VerifyPhoneView.h"];
+    NSString *testFile = [BASE_PATH stringByAppendingPathComponent:@"FMActionManager.m"];
+    [self findOutModifyInPath:testFile atLine:500];
+}
+
++ (void)findOutModifyInPath:(NSString *)file atLine:(NSInteger)line {
+    NSString *fileContent = [NSString stringWithContentsOfFile:file encoding:NSUTF8StringEncoding error:nil];
+    NSArray *lines = [fileContent componentsSeparatedByString:@"\n"];
+    CodeMethod *cm = [self methodInLines:lines atLine:line];
+    NSString *fileName = [file lastPathComponent];
+    fileName = [fileName stringByDeletingPathExtension];
+    CodeManager *codeManager = [CodeManager sharedInstance];
+    NSMutableDictionary *allFiles = codeManager.allFiles;
+    NSMutableArray *refs = [((CodeFile *)allFiles[fileName]).refs mutableCopy];
+    while(refs.count) {
+        NSMutableArray *aArr = [refs mutableCopy];
+        [refs removeAllObjects];
+        for(NSString *name in aArr) {
+            CodeFile *aCodeFile = allFiles[name];
+            if(aCodeFile.filePath.length) {
+                NSString *aFileContent = [NSString stringWithContentsOfFile:aCodeFile.filePath encoding:NSUTF8StringEncoding error:nil];
+                
+            }
+        }
+    }
 }
 
 + (void)analysisDefineWithPath:(NSString *)path {
@@ -30,7 +53,9 @@
     } else {
         return;
     }
-    [self analysisDefine:fileContent isHeader:isHeader];
+    //    [self analysisDefine:fileContent isHeader:isHeader];
+    NSArray *lines = [fileContent componentsSeparatedByString:@"\n"];
+    NSLog(@"%@", [self methodInLines:lines atLine:1020].methodName);
 }
 
 + (void)analysisCodeWithPath:(NSString *)path {
@@ -42,8 +67,71 @@
     [self analysisCode:fileContent];
 }
 
++ (CodeMethod *)methodInLines:(NSArray *)lines atLine:(NSInteger)line {
+    line--;
+    NSInteger startLine = line;
+    for(startLine = line; startLine >= 0; startLine--) {
+        NSString *aLine = lines[startLine];
+        aLine = [aLine trim];
+        if([aLine hasPrefix:@"+"] || [aLine hasPrefix:@"-"]) {
+            break;
+        }
+    }
+    NSString *resultMethod = @"";
+    while(YES) {
+        NSString *aLine = lines[startLine];
+        aLine = [aLine trim];
+        BOOL shouldBreak = [aLine containsString:@"{"];
+        if(shouldBreak) {
+            aLine = [[aLine stringBeforeComponent:@"{"] trim];
+        }
+        NSArray *sections = [aLine componentsSeparatedByString:@":"];
+        BOOL haveParameters = [aLine containsString:@":"];
+        for(NSInteger i = 0; i < sections.count; i++) {
+            NSString *aSection = sections[i];
+            NSString *aBody = [[[aSection componentsSeparatedByString:@")"] lastObject] trim];
+            if(![aBody containsString:@" "] && i != 0) {
+                break;
+            }
+            aBody = [[[aBody componentsSeparatedByString:@" "] lastObject] trim];
+            resultMethod = [resultMethod stringByAppendingString:aBody];
+            if(haveParameters) {
+                resultMethod = [resultMethod stringByAppendingString:@":"];
+            }
+        }
+        
+        if(shouldBreak) {
+            break;
+        }
+        startLine++;
+    }
+    CodeMethod *cm = [[CodeMethod alloc] init];
+    cm.methodName = resultMethod;
+    cm.methodClass = [self classInLines:lines atLine:line];
+    return cm;
+}
 
-+ (void)analysisDefine:(NSString *)file isHeader:(BOOL)isHeader {
++ (CodeClass *)classInLines:(NSArray *)lines atLine:(NSInteger)line {
+    line--;
+    NSInteger startLine = line;
+    for(startLine = line; startLine >= 0; startLine--) {
+        NSString *aLine = lines[startLine];
+        aLine = [aLine trim];
+        if([aLine hasPrefix:@"@implementation"]) {
+            break;
+        }
+    }
+    NSString *aLine = lines[startLine];
+    aLine = [aLine trim];
+    NSString *className = [[aLine stringAfterComponent:@"@implementation"] trim];
+    if([className containsString:@"<"]) {
+        className = [[className stringBeforeComponent:@"<"] trim];
+    }
+    return [CodeClass codeClassNamed:className];
+}
+
++ (void)analysisDefine:(NSString *)file
+              isHeader:(BOOL)isHeader {
     NSArray *lines = [file componentsSeparatedByString:@"\n"];
     BOOL inMarking = NO;
     BOOL inDefine = NO;

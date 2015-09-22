@@ -8,10 +8,13 @@
 
 #import <Foundation/Foundation.h>
 
+#define BASE_PATH @"/Users/lolzorz/Dev/QQMail/main/QQMailIOSApp"
+
 @interface CodeManager : NSObject
 
 + (CodeManager *)sharedInstance;
 
 @property (nonatomic, strong) NSMutableDictionary *allClasses;
+@property (nonatomic, strong) NSMutableDictionary *allFiles;
 
 @end

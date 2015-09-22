@@ -13,6 +13,8 @@
 		CDEC13021B94280B007901E8 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = CDEC13011B94280B007901E8 /* main.m */; };
 		CDEC130B1B942A4D007901E8 /* CodeClass.m in Sources */ = {isa = PBXBuildFile; fileRef = CDEC130A1B942A4D007901E8 /* CodeClass.m */; };
 		CDEC130E1B943A4C007901E8 /* CodeMethod.m in Sources */ = {isa = PBXBuildFile; fileRef = CDEC130D1B943A4C007901E8 /* CodeMethod.m */; };
+		EE348E821BB1797600DBF96F /* FileReader.m in Sources */ = {isa = PBXBuildFile; fileRef = EE348E811BB1797600DBF96F /* FileReader.m */; settings = {ASSET_TAGS = (); }; };
+		EE8639141BB10F8700B45872 /* CodeFile.m in Sources */ = {isa = PBXBuildFile; fileRef = EE8639131BB10F8700B45872 /* CodeFile.m */; settings = {ASSET_TAGS = (); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -40,6 +42,10 @@
 		CDEC130A1B942A4D007901E8 /* CodeClass.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CodeClass.m; sourceTree = "<group>"; };
 		CDEC130C1B943A4C007901E8 /* CodeMethod.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CodeMethod.h; sourceTree = "<group>"; };
 		CDEC130D1B943A4C007901E8 /* CodeMethod.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CodeMethod.m; sourceTree = "<group>"; };
+		EE348E801BB1797600DBF96F /* FileReader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileReader.h; sourceTree = "<group>"; };
+		EE348E811BB1797600DBF96F /* FileReader.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FileReader.m; sourceTree = "<group>"; };
+		EE8639121BB10F8700B45872 /* CodeFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CodeFile.h; sourceTree = "<group>"; };
+		EE8639131BB10F8700B45872 /* CodeFile.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CodeFile.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -60,6 +66,8 @@
 				CDE45A261B9807D900569FAD /* CodeReader.m */,
 				CDE45A281B980ADA00569FAD /* CodeManager.h */,
 				CDE45A291B980ADA00569FAD /* CodeManager.m */,
+				EE348E801BB1797600DBF96F /* FileReader.h */,
+				EE348E811BB1797600DBF96F /* FileReader.m */,
 			);
 			path = Analysis;
 			sourceTree = "<group>";
@@ -107,6 +115,8 @@
 				CDEC130A1B942A4D007901E8 /* CodeClass.m */,
 				CDEC130C1B943A4C007901E8 /* CodeMethod.h */,
 				CDEC130D1B943A4C007901E8 /* CodeMethod.m */,
+				EE8639121BB10F8700B45872 /* CodeFile.h */,
+				EE8639131BB10F8700B45872 /* CodeFile.m */,
 			);
 			path = Code;
 			sourceTree = "<group>";
@@ -169,10 +179,12 @@
 			files = (
 				CDEC130E1B943A4C007901E8 /* CodeMethod.m in Sources */,
 				CDE45A2E1B98297100569FAD /* NSString+Util.m in Sources */,
+				EE348E821BB1797600DBF96F /* FileReader.m in Sources */,
 				CDE45A271B9807D900569FAD /* CodeReader.m in Sources */,
 				CDEC13021B94280B007901E8 /* main.m in Sources */,
 				CDE45A2A1B980ADA00569FAD /* CodeManager.m in Sources */,
 				CDEC130B1B942A4D007901E8 /* CodeClass.m in Sources */,
+				EE8639141BB10F8700B45872 /* CodeFile.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -19,4 +19,12 @@
     return instance;
 }
 
+- (instancetype)init {
+    if(self = [super init]) {
+        self.allClasses = [[NSMutableDictionary alloc] init];
+        self.allFiles = [[NSMutableDictionary alloc] init];
+    }
+    return self;
+}
+
 @end

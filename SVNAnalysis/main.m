@@ -8,9 +8,11 @@
 
 #import <Foundation/Foundation.h>
 #import "CodeReader.h"
+#import "FileReader.h"
 
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
+        [FileReader testRead];
         [CodeReader testRead];
     }
     return 0;
