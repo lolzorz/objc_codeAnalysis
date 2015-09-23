@@ -12,9 +12,8 @@
 
 @interface CodeMethod : NSObject
 
-@property (nonatomic, strong) CodeFile *methodFile;
 @property (nonatomic, strong) NSString *methodName;
-@property (nonatomic, assign) NSInteger startLine;
-@property (nonatomic, strong) NSMutableArray *allLine;
+@property (nonatomic, strong) NSMutableArray *allFiles;
+@property (nonatomic, strong) NSString *baseFile;
 
 @end

@@ -13,6 +13,8 @@
 #import "CodeManager.h"
 #import "CodeFile.h"
 
+typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
+
 @implementation CodeReader
 
 + (void)testRead {
@@ -28,50 +30,124 @@
     fileName = [fileName stringByDeletingPathExtension];
     CodeManager *codeManager = [CodeManager sharedInstance];
     NSMutableDictionary *allFiles = codeManager.allFiles;
-    NSMutableArray *refs = [[NSMutableArray alloc] init];
-    NSMutableArray *aRef = ((CodeFile *)allFiles[fileName]).refs;
-    for(NSString *name in aRef) {
-        CodeMethod *aMethod = [[CodeMethod alloc] init];
-        aMethod.methodFile = allFiles[name];
-        aMethod.methodName = methodName;
-        [refs addObject:aMethod];
-    }
-    while(refs.count) {
-        NSMutableArray *aArr = [refs mutableCopy];
+    __block NSMutableDictionary *refs = [[NSMutableDictionary alloc] init];
+    CodeFile *aCodeFile = allFiles[fileName];
+    NSMutableArray *aRef = aCodeFile.refs;
+    CodeMethod *aMethod = [[CodeMethod alloc] init];
+    aMethod.allFiles = aRef;
+    aMethod.methodName = methodName;
+    aMethod.baseFile = fileName;
+    refs[methodName] = aMethod;
+    while(refs.allKeys.count) {
+        NSMutableDictionary *tRefs = [refs mutableCopy];
         [refs removeAllObjects];
-        for(CodeMethod *aMethod in aArr) {
-            CodeFile *aCodeFile = aMethod.methodFile;
-            if(aCodeFile.filePath.length) {
-                NSString *aFileContent = [NSString stringWithContentsOfFile:aCodeFile.filePath encoding:NSUTF8StringEncoding error:nil];
-                
-                
-                
+        
+        NSArray *allKeys = tRefs.allKeys;
+        for(NSString *key in allKeys) {
+            CodeMethod *tMethod = tRefs[key];
+            
+            __block NSInteger relatedCount = 0;
+            NSMutableArray *methodRelatedFiles = tMethod.allFiles;
+            for(NSString *tFileName in methodRelatedFiles) {
+                CodeFile *tFile = [CodeFile codeFileNamed:tFileName];
+                if(tFile.filePath.length) {
+                    [self analysisFileAtPath:tFile.filePath methodName:tMethod.methodName callback:^(CodeMethod *relatedMethod) {
+                        refs[relatedMethod.methodName] = relatedMethod;
+                        relatedCount++;
+                    }];
+                }
+            }
+            if(relatedCount < 1) {
+                NSLog(@"位于文件：%@，对方法：%@ 的改动，最终影响到文件：%@，方法名：%@", fileName, methodName, tMethod.baseFile, tMethod.methodName);
             }
         }
     }
 }
 
-+ (void)analysisDefineWithPath:(NSString *)path {
++ (void)analysisFileAtPath:(NSString *)path methodName:(NSString *)name callback:(findRelatedCallback)cb {
+    NSString *fileName = [path lastPathComponent];
+    fileName = [fileName stringByDeletingPathExtension];
     NSString *fileContent = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:nil];
-    BOOL isHeader = NO;
-    NSString *extension = [path pathExtension];
-    if([extension isEqualToString:@"m"]) {
-        isHeader = NO;
-    } else if([extension isEqualToString:@"h"]) {
-        isHeader = YES;
-    } else {
-        return;
+    NSArray *lines = [fileContent componentsSeparatedByString:@"\n"];
+    BOOL inMarking = NO;
+    
+    NSArray *methodParts = [name componentsSeparatedByString:@":"];
+    
+    for(NSInteger i = 0; i < lines.count; i++) {
+        NSString *aLine = lines[i];
+        aLine = [aLine trim];
+        if(aLine.length < 1) {
+            continue;
+        }
+        //进行注释的去除
+        if(inMarking) {
+            if([aLine containsString:@"*/"]) {
+                aLine = [aLine stringAfterComponent:@"*/"];
+                inMarking = NO;
+            } else {
+                continue;
+            }
+        }
+        if([aLine containsString:@"/*"]) {
+            aLine = [aLine stringBeforeComponent:@"/*"];
+            inMarking = YES;
+        }
+        if([aLine containsString:@"//"]) {
+            aLine = [aLine stringBeforeComponent:@"//"];
+        }
+        if(aLine.length < 1) {
+            continue;
+        }
+        
+        //按照正常的语法，aLine已经是有效代码了
+        //这里要进行对应方法的寻找
+        //这里不用正则的原因是因为。。语法太复杂..
+        //这里就不进行C/C++的面向过程函数的分析了
+        if([aLine containsString:methodParts[0]]) {
+            //无参 直接找到
+            if(methodParts.count < 2) {
+                CodeMethod *result = [[CodeMethod alloc] init];
+                result.allFiles = [CodeFile codeFileNamed:fileName].refs;
+                result.methodName = [self methodInLines:lines atLine:i];
+                result.baseFile = fileName;
+                cb(result);
+            } else {
+                NSInteger currentPartIndex = 0;
+                NSInteger maxPartIndex = methodParts.count - 2;
+                while(YES) {
+                    aLine = [lines[i] trim];
+                    BOOL shouldBreak = NO;
+                    BOOL match = NO;
+                    NSString *nextPart = aLine;
+                    while(YES) {
+                        NSString *currentPart = methodParts[currentPartIndex];
+                        nextPart = [[nextPart stringAfterComponent:currentPart] trim];
+                        nextPart = [[nextPart stringAfterComponent:@":"] trim];
+                        if(currentPartIndex >= maxPartIndex) {
+                            if(nextPart.length) {
+                                match = YES;
+                            }
+                            shouldBreak = YES;
+                            break;
+                        }
+                    }
+                    
+                    if(shouldBreak) {
+                        if(match) {
+                            CodeMethod *result = [[CodeMethod alloc] init];
+                            result.allFiles = [CodeFile codeFileNamed:fileName].refs;
+                            result.methodName = [self methodInLines:lines atLine:i];
+                            result.baseFile = fileName;
+                            cb(result);
+                        }
+                        break;
+                    }
+                    i++;
+                }
+            }
+        }
     }
-    //    [self analysisDefine:fileContent isHeader:isHeader];
-}
 
-+ (void)analysisCodeWithPath:(NSString *)path {
-    NSString *fileContent = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:nil];
-    NSString *extension = [path pathExtension];
-    if(![extension isEqualToString:@"m"]) {
-        return;
-    }
-    [self analysisCode:fileContent];
 }
 
 + (NSString *)methodInLines:(NSArray *)lines atLine:(NSInteger)line {
@@ -112,9 +188,6 @@
         }
         startLine++;
     }
-    CodeMethod *cm = [[CodeMethod alloc] init];
-//    cm.methodName = resultMethod;
-//    cm.methodClass = [self classInLines:lines atLine:line];
     return resultMethod;
 }
 
