@@ -18,8 +18,10 @@ typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
 @implementation CodeReader
 
 + (void)testRead {
-    NSString *testFile = [BASE_PATH stringByAppendingPathComponent:@"FMActionManager.m"];
-    [self findOutModifyInPath:testFile atLine:500];
+    NSString *testFile = [BASE_PATH stringByAppendingPathComponent:@"GeneralClasses"];
+    testFile = [testFile stringByAppendingPathComponent:@"Model"];
+    testFile = [testFile stringByAppendingPathComponent:@"FMSplashManager.m"];
+    [self findOutModifyInPath:testFile atLine:191];
 }
 
 + (void)findOutModifyInPath:(NSString *)file atLine:(NSInteger)line {
@@ -73,8 +75,8 @@ typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
     
     NSArray *methodParts = [name componentsSeparatedByString:@":"];
     
-    for(NSInteger i = 0; i < lines.count; i++) {
-        NSString *aLine = lines[i];
+    for(NSInteger lineIndex = 0; lineIndex < lines.count; lineIndex++) {
+        NSString *aLine = lines[lineIndex];
         aLine = [aLine trim];
         if(aLine.length < 1) {
             continue;
@@ -104,47 +106,103 @@ typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
         //这里不用正则的原因是因为。。语法太复杂..
         //这里就不进行C/C++的面向过程函数的分析了
         if([aLine containsString:methodParts[0]]) {
+            if([aLine hasPrefix:@"+"] || [aLine hasPrefix:@"-"]) {
+                continue;
+            }
+            NSString *prefex = [aLine stringBeforeComponent:methodParts[0]];
+            if(![prefex containsString:@"["]) {
+                continue;
+            }
             //无参 直接找到
             if(methodParts.count < 2) {
+                if(![[[aLine stringAfterComponent:methodParts[0]] trim] hasPrefix:@"]"]) {
+                    continue;
+                }
                 CodeMethod *result = [[CodeMethod alloc] init];
                 result.allFiles = [CodeFile codeFileNamed:fileName].refs;
-                result.methodName = [self methodInLines:lines atLine:i];
+                result.methodName = [self methodInLines:lines atLine:lineIndex];
                 result.baseFile = fileName;
                 cb(result);
             } else {
-                NSInteger currentPartIndex = 0;
-                NSInteger maxPartIndex = methodParts.count - 2;
-                while(YES) {
-                    aLine = [lines[i] trim];
+                //整合语句  直到这个方法结束(用空格代替换行，使它们都在同一行里)
+                NSString *firstPart = [methodParts[0] stringByAppendingString:@":"];
+                if(![aLine containsString:firstPart]) {
+                    continue;
+                }
+                NSString *allCode = [aLine stringBeforeComponent:firstPart];
+                allCode = [aLine stringAfterComponent:allCode];
+                if(!allCode.length) {
+                    continue;
+                }
+                NSInteger rightBrackets = 0;
+                NSInteger leftBrackets = 0;
+                NSInteger aLineIndex = lineIndex;
+                NSInteger codeIndex = 0;
+                while(rightBrackets + 1 != leftBrackets) {
                     BOOL shouldBreak = NO;
-                    BOOL match = NO;
-                    NSString *nextPart = aLine;
-                    while(YES) {
-                        NSString *currentPart = methodParts[currentPartIndex];
-                        nextPart = [[nextPart stringAfterComponent:currentPart] trim];
-                        nextPart = [[nextPart stringAfterComponent:@":"] trim];
-                        if(currentPartIndex >= maxPartIndex) {
-                            if(nextPart.length) {
-                                match = YES;
+                    while(codeIndex < allCode.length) {
+                        unichar c = [allCode characterAtIndex:codeIndex];
+                        codeIndex++;
+                        if(c == '[') {
+                            rightBrackets++;
+                            if(codeIndex >= allCode.length) {
+                                allCode = [allCode stringByAppendingString:@" "];
+                                aLineIndex++;
+                                if(aLineIndex >= lines.count) {
+                                    shouldBreak = YES;
+                                    break;
+                                }
+                                allCode = [allCode stringByAppendingString:lines[aLineIndex]];
                             }
-                            shouldBreak = YES;
                             break;
                         }
-                    }
-                    
-                    if(shouldBreak) {
-                        if(match) {
-                            CodeMethod *result = [[CodeMethod alloc] init];
-                            result.allFiles = [CodeFile codeFileNamed:fileName].refs;
-                            result.methodName = [self methodInLines:lines atLine:i];
-                            result.baseFile = fileName;
-                            cb(result);
+                        if(c == ']') {
+                            leftBrackets++;
+                            if(codeIndex >= allCode.length) {
+                                allCode = [allCode stringByAppendingString:@" "];
+                                aLineIndex++;
+                                if(aLineIndex >= lines.count) {
+                                    shouldBreak = YES;
+                                    break;
+                                }
+                                allCode = [allCode stringByAppendingString:lines[aLineIndex]];
+                            }
+                            break;
                         }
+                        if(codeIndex >= allCode.length) {
+                            allCode = [allCode stringByAppendingString:@" "];
+                            aLineIndex++;
+                            if(aLineIndex >= lines.count) {
+                                shouldBreak = YES;
+                                break;
+                            }
+                            allCode = [allCode stringByAppendingString:lines[aLineIndex]];
+                        }
+                    }
+                    if(shouldBreak) {
                         break;
                     }
-                    i++;
+                }
+                
+                allCode = [allCode substringToIndex:codeIndex];
+                BOOL match = YES;
+                for(NSInteger partIndex = 0; partIndex < methodParts.count - 1; partIndex++) {
+                    if(![allCode containsString:[methodParts[partIndex] stringByAppendingString:@":"]]) {
+                        match = NO;
+                        break;
+                    }
+                }
+                if(match) {
+                    CodeMethod *result = [[CodeMethod alloc] init];
+                    result.allFiles = [CodeFile codeFileNamed:fileName].refs;
+                    result.methodName = [self methodInLines:lines atLine:lineIndex];
+                    result.baseFile = fileName;
+                    cb(result);
                 }
             }
+        }
+        if(lineIndex >= lines.count) {
+            break;
         }
     }
 
