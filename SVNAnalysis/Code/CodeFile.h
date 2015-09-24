@@ -13,6 +13,7 @@
 @property (nonatomic, strong) NSString *fileName;
 @property (nonatomic, strong) NSString *filePath;
 @property (nonatomic, strong) NSMutableArray *refs;
+@property (nonatomic, strong) NSMutableDictionary *histories;
 
 + (CodeFile *)codeFileNamed:(NSString *)name;
 

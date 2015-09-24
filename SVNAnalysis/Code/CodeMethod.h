@@ -15,5 +15,7 @@
 @property (nonatomic, strong) NSString *methodName;
 @property (nonatomic, strong) NSMutableArray *allFiles;
 @property (nonatomic, strong) NSString *baseFile;
+@property (nonatomic, assign) NSInteger line;
+@property (nonatomic, strong) CodeMethod *lastLevel;
 
 @end

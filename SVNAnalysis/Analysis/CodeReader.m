@@ -21,6 +21,8 @@ typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
     NSString *testFile = [BASE_PATH stringByAppendingPathComponent:@"GeneralClasses"];
     testFile = [testFile stringByAppendingPathComponent:@"Model"];
     testFile = [testFile stringByAppendingPathComponent:@"FMSplashManager.m"];
+    NSString *testFile2 = [BASE_PATH stringByAppendingPathComponent:@"FMActionManager.m"];
+    [self findOutModifyInPath:testFile2 atLine:500];
     [self findOutModifyInPath:testFile atLine:191];
 }
 
@@ -39,6 +41,7 @@ typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
     aMethod.allFiles = aRef;
     aMethod.methodName = methodName;
     aMethod.baseFile = fileName;
+    aMethod.line = line;
     refs[methodName] = aMethod;
     while(refs.allKeys.count) {
         NSMutableDictionary *tRefs = [refs mutableCopy];
@@ -53,20 +56,41 @@ typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
             for(NSString *tFileName in methodRelatedFiles) {
                 CodeFile *tFile = [CodeFile codeFileNamed:tFileName];
                 if(tFile.filePath.length) {
-                    [self analysisFileAtPath:tFile.filePath methodName:tMethod.methodName callback:^(CodeMethod *relatedMethod) {
+                    [self analysisFileAtPath:tFile.filePath method:tMethod callback:^(CodeMethod *relatedMethod) {
                         refs[relatedMethod.methodName] = relatedMethod;
                         relatedCount++;
                     }];
                 }
             }
             if(relatedCount < 1) {
-                NSLog(@"位于文件：%@，对方法：%@ 的改动，最终影响到文件：%@，方法名：%@", fileName, methodName, tMethod.baseFile, tMethod.methodName);
+                NSString *logStr = [NSString stringWithFormat:@"\n\n\n\n %@.m |-[%@](%ld) 改动的影响路径:\n", aMethod.baseFile, aMethod.methodName, aMethod.line];
+                NSInteger prefixCount = 1;
+                while(YES) {
+                    NSString *prefixStr = @"|";
+                    for(NSInteger countIndex = 0; countIndex < prefixCount; countIndex++) {
+                        prefixStr = [prefixStr stringByAppendingString:@"--"];
+                    }
+                    logStr = [logStr stringByAppendingString:prefixStr];
+                    NSString *alog = [NSString stringWithFormat:@" %@.m |-[%@](%ld)\n", tMethod.baseFile, tMethod.methodName, tMethod.line];
+                    logStr = [logStr stringByAppendingString:alog];
+                    tMethod = tMethod.lastLevel;
+                    if(!tMethod) {
+                        break;
+                    }
+                    prefixCount++;
+                }
+                NSLog(@"%@", logStr);
             }
         }
     }
 }
 
-+ (void)analysisFileAtPath:(NSString *)path methodName:(NSString *)name callback:(findRelatedCallback)cb {
++ (void)analysisFileAtPath:(NSString *)path method:(CodeMethod *)lastMethod callback:(findRelatedCallback)cb {
+    NSString *name = lastMethod.methodName;
+    //排除改动太大的东西。。
+    if([name hasPrefix:@"init"]) {
+        return;
+    }
     NSString *fileName = [path lastPathComponent];
     fileName = [fileName stringByDeletingPathExtension];
     NSString *fileContent = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:nil];
@@ -118,10 +142,18 @@ typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
                 if(![[[aLine stringAfterComponent:methodParts[0]] trim] hasPrefix:@"]"]) {
                     continue;
                 }
+                CodeFile *aFile = [CodeFile codeFileNamed:fileName];
+                NSString *aMethodName = [self methodInLines:lines atLine:lineIndex];
+                if(aFile.histories[aMethodName]) {
+                    return;
+                }
                 CodeMethod *result = [[CodeMethod alloc] init];
-                result.allFiles = [CodeFile codeFileNamed:fileName].refs;
-                result.methodName = [self methodInLines:lines atLine:lineIndex];
+                result.allFiles = aFile.refs;
+                result.methodName = aMethodName;
                 result.baseFile = fileName;
+                aFile.histories[aMethodName] = @(YES);
+                result.lastLevel = lastMethod;
+                result.line = lineIndex;
                 cb(result);
             } else {
                 //整合语句  直到这个方法结束(用空格代替换行，使它们都在同一行里)
@@ -193,10 +225,18 @@ typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
                     }
                 }
                 if(match) {
+                    CodeFile *aFile = [CodeFile codeFileNamed:fileName];
+                    NSString *aMethodName = [self methodInLines:lines atLine:lineIndex];
+                    if(aFile.histories[aMethodName]) {
+                        return;
+                    }
                     CodeMethod *result = [[CodeMethod alloc] init];
-                    result.allFiles = [CodeFile codeFileNamed:fileName].refs;
-                    result.methodName = [self methodInLines:lines atLine:lineIndex];
+                    result.allFiles = aFile.refs;
+                    result.methodName = aMethodName;
                     result.baseFile = fileName;
+                    aFile.histories[aMethodName] = @(YES);
+                    result.lastLevel = lastMethod;
+                    result.line = lineIndex;
                     cb(result);
                 }
             }
@@ -219,6 +259,9 @@ typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
         }
     }
     NSString *resultMethod = @"";
+    if(startLine < 0) {
+        return [NSString stringWithFormat:@"Find Method In Lines Error"];
+    }
     while(YES) {
         NSString *aLine = lines[startLine];
         aLine = [aLine trim];
