@@ -11,5 +11,7 @@
 @interface CodeReader : NSObject
 
 + (void)testRead;
++ (void)readLogCount:(NSInteger)count atPath:(NSString *)basePath;
++ (void)readLogReversion:(NSString *)reversion atPath:(NSString *)basePath;
 
 @end

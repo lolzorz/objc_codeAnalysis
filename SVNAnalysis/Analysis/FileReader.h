@@ -11,5 +11,6 @@
 @interface FileReader : NSObject
 
 + (void)testRead;
++ (void)readPath:(NSString *)path;
 
 @end

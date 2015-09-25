@@ -18,12 +18,82 @@ typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
 @implementation CodeReader
 
 + (void)testRead {
-    NSString *testFile = [BASE_PATH stringByAppendingPathComponent:@"GeneralClasses"];
-    testFile = [testFile stringByAppendingPathComponent:@"Model"];
-    testFile = [testFile stringByAppendingPathComponent:@"FMSplashManager.m"];
-    NSString *testFile2 = [BASE_PATH stringByAppendingPathComponent:@"FMActionManager.m"];
-    [self findOutModifyInPath:testFile2 atLine:500];
-    [self findOutModifyInPath:testFile atLine:191];
+//    [self readLogCount:10];
+}
+
++ (void)readLogCount:(NSInteger)count atPath:(NSString *)basePath {
+    NSString *str = [NSString stringWithFormat:@"cd %@\n svn log -v -l%ld --diff", basePath, count];
+    [self excuteCommand:str atPath:basePath];
+}
+
++ (void)readLogReversion:(NSString *)reversion atPath:(NSString *)basePath {
+    NSString *str = [NSString stringWithFormat:@"cd %@\n svn log -v %@ --diff", basePath, reversion];
+    [self excuteCommand:str atPath:basePath];
+}
+
++ (void)excuteCommand:(NSString *)command atPath:(NSString *)basePath {
+    char pResult[1000000];
+    int fd[2];
+    if(pipe(fd))   {
+        NSLog(@"pipe error!\n");
+        return;
+    }
+    fflush(stdout);
+    int bak_fd = dup(STDOUT_FILENO);
+    int new_fd = dup2(fd[1], STDOUT_FILENO);
+    system([command UTF8String]);
+    read(fd[0], pResult, 1000000 - 1);
+    pResult[strlen(pResult)-1] = 0;
+    dup2(bak_fd, new_fd);
+    NSString *result = [NSString stringWithCString:pResult encoding:NSUTF8StringEncoding];
+    if(!result.length) {
+        printf("svn error");
+        return;
+    }
+    
+    NSArray *lines = [result componentsSeparatedByString:@"\n"];
+    NSString *currentFilePath = nil;
+    NSInteger modifyLine = 0;
+    NSString *currentR = nil;
+    for(NSInteger lineIndex = 0; lineIndex < lines.count; lineIndex++) {
+        NSString *aLine = lines[lineIndex];
+        if(currentFilePath) {
+            if([aLine hasPrefix:@"Index: "]) {
+                NSString *filePath = [[aLine stringAfterComponent:@"Index:"] trim];
+                NSString *fileName = [filePath lastPathComponent];
+                if([[fileName pathExtension] isEqualToString:@"m"]) {
+                    currentFilePath = filePath;
+                    NSString *logStr = [NSString stringWithFormat:@"----------------------------------------------------------------------------\n%@\n", currentR];
+                    
+                    const char *logStrCstring = [logStr cStringUsingEncoding:NSUTF8StringEncoding];
+                    printf("%s", logStrCstring);
+                } else {
+                    currentFilePath = nil;
+                }
+            } else if([aLine hasPrefix:@"@@"]) {
+                NSString *lineDetail = [[aLine stringAfterComponent:@"@@"] trim];
+                lineDetail = [[lineDetail stringAfterComponent:@"+"] trim];
+                lineDetail = [[lineDetail stringBeforeComponent:@","] trim];
+                modifyLine = [lineDetail longLongValue] - 1;
+            } else if([aLine hasPrefix:@"+ "] || [aLine hasPrefix:@"- "]) {
+                [self findOutModifyInPath:[basePath stringByAppendingPathComponent:currentFilePath] atLine:modifyLine];
+            }
+        } else if([aLine hasPrefix:@"Index: "]) {
+            NSString *filePath = [[aLine stringAfterComponent:@"Index:"] trim];
+            NSString *fileName = [filePath lastPathComponent];
+            if([[fileName pathExtension] isEqualToString:@"m"]) {
+                currentFilePath = filePath;
+                NSString *logStr = [NSString stringWithFormat:@"----------------------------------------------------------------------------\n%@\n", currentR];
+                
+                const char *logStrCstring = [logStr cStringUsingEncoding:NSUTF8StringEncoding];
+                printf("%s", logStrCstring);
+            }
+        }
+        if([aLine hasPrefix:@"r"]) {
+            currentR = aLine;
+        }
+        modifyLine++;
+    }
 }
 
 + (void)findOutModifyInPath:(NSString *)file atLine:(NSInteger)line {
@@ -36,6 +106,12 @@ typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
     NSMutableDictionary *allFiles = codeManager.allFiles;
     __block NSMutableDictionary *refs = [[NSMutableDictionary alloc] init];
     CodeFile *aCodeFile = allFiles[fileName];
+    
+    if(aCodeFile.histories[methodName]) {
+        return;
+    }
+    aCodeFile.histories[methodName] = @(YES);
+    
     NSMutableArray *aRef = aCodeFile.refs;
     CodeMethod *aMethod = [[CodeMethod alloc] init];
     aMethod.allFiles = aRef;
@@ -63,7 +139,7 @@ typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
                 }
             }
             if(relatedCount < 1) {
-                NSString *logStr = [NSString stringWithFormat:@"\n\n\n\n %@.m |-[%@](%ld) 改动的影响路径:\n", aMethod.baseFile, aMethod.methodName, aMethod.line];
+                NSString *logStr = [NSString stringWithFormat:@"\n %@.m |-[%@](%ld) 改动的影响路径:\n", aMethod.baseFile, aMethod.methodName, aMethod.line];
                 NSInteger prefixCount = 1;
                 while(YES) {
                     NSString *prefixStr = @"|";
@@ -79,7 +155,8 @@ typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
                     }
                     prefixCount++;
                 }
-                NSLog(@"%@", logStr);
+                const char *logStrCstring = [logStr cStringUsingEncoding:NSUTF8StringEncoding];
+                printf("%s", logStrCstring);
             }
         }
     }

@@ -8,7 +8,7 @@
 
 #import <Foundation/Foundation.h>
 
-#define BASE_PATH @"/Users/lolzorz/Dev/QQMail/main/QQMailIOSApp"
+//#define BASE_PATH @"/Users/lolzorz/Dev/QQMail/QQMail410/QQMailIOSApp"
 
 @interface CodeManager : NSObject
 
