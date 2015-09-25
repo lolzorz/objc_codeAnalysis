@@ -392,7 +392,7 @@ typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
               isHeader:(BOOL)isHeader {
     NSArray *lines = [file componentsSeparatedByString:@"\n"];
     BOOL inMarking = NO;
-    BOOL inDefine = NO;
+//    BOOL inDefine = NO;
     CodeClass *currentClass;
     for(NSInteger i = 0; i < lines.count; i++) {
         NSString *aLine = lines[i];
@@ -420,11 +420,6 @@ typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
         if(aLine.length < 1) {
             continue;
         }
-        
-        //按照正常的语法，aLine已经是有效代码了
-        //这里要进行语句的分析
-        //这里不用正则的原因是因为项目文件很多很大的话  每一行都用正则会导致效率降低
-        //这里就不进行C/C++的面向过程函数的分析了
         
         //@interface
         if([aLine hasPrefix:@"@interface"]) {
@@ -459,7 +454,7 @@ typedef void(^findRelatedCallback)(CodeMethod *relatedMethod);
 + (void)analysisCode:(NSString *)file {
     NSArray *lines = [file componentsSeparatedByString:@"\n"];
     BOOL inMarking = NO;
-    BOOL inDefine = NO;
+//    BOOL inDefine = NO;
     for(NSInteger i = 0; i < lines.count; i++) {
         NSString *aLine = lines[i];
         if(aLine.length < 1) {
