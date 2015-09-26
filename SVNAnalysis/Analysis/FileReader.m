@@ -14,7 +14,7 @@
 @implementation FileReader
 
 + (void)testRead {
-    [self readPath:BASE_PATH];
+//    [self readPath:BASE_PATH];
 }
 
 + (void)readPath:(NSString *)path {

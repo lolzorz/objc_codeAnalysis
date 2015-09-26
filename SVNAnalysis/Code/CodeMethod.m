@@ -10,4 +10,11 @@
 
 @implementation CodeMethod
 
+- (instancetype)init {
+    if(self = [super init]) {
+        self.allFiles = [[NSMutableArray alloc] init];
+    }
+    return self;
+}
+
 @end

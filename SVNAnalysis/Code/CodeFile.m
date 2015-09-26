@@ -14,6 +14,7 @@
 - (instancetype)init {
     if(self = [super init]) {
         self.refs = [[NSMutableArray alloc] init];
+        self.histories = [[NSMutableDictionary alloc] init];
     }
     return self;
 }
